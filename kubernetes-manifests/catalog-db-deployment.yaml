@@ -1,0 +1,94 @@
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: catalog-db-deployment
+#   labels:
+#     app: catalog-db
+# spec:
+#   replicas: 1
+#   selector:
+#     matchLabels:
+#       app: catalog-db
+#   template:
+#     metadata:
+#       labels:
+#         app: catalog-db
+#     spec:
+#       containers:
+#       - name: catalog-db-container
+#         image: mongo:5.0-focal # Using a versioned MongoDB image
+#         ports:
+#         - containerPort: 27017
+#         env: # Environment variables for initial database setup
+#         - name: MONGO_INITDB_DATABASE
+#           value: "catalogdb"
+#         - name: MONGO_INITDB_ROOT_USERNAME
+#           value: "cataloguser"
+#         - name: MONGO_INITDB_ROOT_PASSWORD
+#           value: "catalogpass"
+#         # Persistence configuration would typically go here
+# ---
+# # 2. Service to expose the Catalog DB internally
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: catalog-db-service # Internal DNS name used by the Catalog Microservice
+# spec:
+#   selector:
+#     app: catalog-db
+#   ports:
+#     - protocol: TCP
+#       port: 27017
+#       targetPort: 27017
+#   type: ClusterIP # Internal-only access
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-db-deployment
+  labels:
+    app: catalog-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: catalog-db
+  template:
+    metadata:
+      labels:
+        app: catalog-db
+    spec:
+      containers:
+      - name: catalog-db-container
+        image: mongo:5.0-focal  # Stable MongoDB version
+        ports:
+        - containerPort: 27017
+        env:
+        # Environment variables for initializing MongoDB
+        - name: MONGO_INITDB_DATABASE
+          value: "catalogdb"
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: "cataloguser"
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: "catalogpass"
+        # Optional: add a simple liveness check
+        livenessProbe:
+          exec:
+            command: ["mongo", "--eval", "db.adminCommand('ping')"]
+          initialDelaySeconds: 30
+          periodSeconds: 10
+---
+# 2️⃣ Service to expose the Catalog DB internally to the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-db-service   # Must match DATABASE_URL in catalog-deployment
+spec:
+  selector:
+    app: catalog-db
+  ports:
+    - protocol: TCP
+      port: 27017            # Service port
+      targetPort: 27017      # Container port
+  type: ClusterIP            # Internal-only access (used by catalog-service)

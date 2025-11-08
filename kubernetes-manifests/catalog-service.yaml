@@ -1,0 +1,81 @@
+# # 1. Deployment for the Catalog Service
+# apiVersion: apps/v1
+# kind: Deployment
+# metadata:
+#   name: catalog-deployment
+#   labels:
+#     app: catalog-service
+# spec:
+#   replicas: 2 # Scalability: Run 2 instances
+#   selector:
+#     matchLabels:
+#       app: catalog-service
+#   template:
+#     metadata:
+#       labels:
+#         app: catalog-service
+#     spec:
+#       containers:
+#       - name: catalog-container
+#         image: catalog-service:v1 # Image name built locally in Minikube
+#         imagePullPolicy: Never # Crucial: tells Kubernetes to use the local image
+#         ports:
+#         - containerPort: 3000 # The port defined in server.js
+#         env: # Configuration linking to the database service
+#         - name: DB_HOST
+#           value: "catalog-db-service"
+#         - name: DB_PORT
+#           value: "27017"
+# ---
+# # 2. Service to expose the Catalog Service externally (for Postman testing)
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: catalog-service # Internal DNS name
+# spec:
+#   selector:
+#     app: catalog-service
+#   ports:
+#     - protocol: TCP
+#       port: 8081 # External Port (different from User Service 8080)
+#       targetPort: 3000 # Maps to the containerPort
+#   type: NodePort # Allows external access via minikube IP
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-deployment
+  labels:
+    app: catalog-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: catalog-service
+  template:
+    metadata:
+      labels:
+        app: catalog-service
+    spec:
+      containers:
+      - name: catalog-container
+        image: catalog-service:v1
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 3000   # ✅ matches app.listen(3000)
+        env:
+        - name: DATABASE_URL
+          value: "mongodb://cataloguser:catalogpass@catalog-db-service:27017/catalogdb?authSource=admin"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+spec:
+  selector:
+    app: catalog-service
+  ports:
+    - protocol: TCP
+      port: 3000           # ✅ service port
+      targetPort: 3000     # ✅ same as container port
+  type: NodePort           # ✅ external access from minikube
